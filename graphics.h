@@ -3,8 +3,11 @@
 /*
  * Macros & Typedef
  */
+
+#include <stdio.h>
 typedef unsigned short color_t;
-#define RGB(r,g,b)  (r+g+b)
+#define RGB(r,g,b) (r<<10)|(g<<5)|(b)
+
 
 /*
  * Function List

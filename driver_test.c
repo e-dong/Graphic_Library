@@ -1,37 +1,38 @@
 #include "graphics.h"
 #include <stdio.h>
-int main() {
-  // test sizeof
-  char* buf[5];
-  
-  //buf[0] = 'c';
-  int size = sizeof(buf) / sizeof(*buf);
-  printf("size: %d\n", size);
-  // test rgb
-  printf("RGB TEST: %d\n", RGB(1,1,1));
-  // test int graphics
-  
-  // test exit graphics
 
-  // test getKey()
+int main() {
+   init_graphics();
+   void* new_buf = new_offscreen_buffer();
+   int y;
+   int x;
+   // All Pixels should have color
+   for (y = 0; y < 480; y++){
+     for (x = 0; x < 640; x++){
+       draw_pixel(new_buf, x, y, RGB(31,63,31));
+     }
+   }
+   blit(new_buf);
+   // wait 3sec and then clear
+    sleep_ms(3000);
+    clear_screen(new_buf);
+    blit(new_buf);
+
+  // positive sloped line
+  draw_line(new_buf, 0, 479, 639, 0,  RGB(31,63,31));
+  draw_line(new_buf, 0, 479, 100, 0,  RGB(31,63,31));
+  //negative sloped line
+  draw_line(new_buf, 0, 0, 639, 479,  RGB(31,31,31));
+  draw_line(new_buf, 0, 0, 100, 479,  RGB(31,31,31));
+  // draws horizontal line
+  draw_line(new_buf, 0, 240, 639, 240, RGB(31,31,0));
+  //draws vertical line
+  draw_line(new_buf,320, 0, 320, 479, RGB(0,31,31)); 
+  blit(new_buf); 
+
+  // hit any key to exit
   char ch = getkey();
-  printf("you have entered: %c\n", ch); 
-  // test void sleep_ms(long ms)
-  int i;
-  for (i = 0; i < 5; i++) {
-    sleep_ms(1000);
-    printf("sec: %d\n", i);
-  }  
-  
-   // test clear_screen
-  
-  // test draw_pixel
-  
-  // test draw_line
-  
-  // test new_offscreen_buffer()
-  
-  // test blit()  
+  exit_graphics(); 
 return 0;
 }
 

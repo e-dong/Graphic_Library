@@ -1,10 +1,2 @@
-CC=gcc
-CFLAGS=-I.
-DEPS = graphics.h
-OBJ = driver_test.o graphic_library.o 
-
-%.o: %.c $(DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS)
-
-driver_test: $(OBJ)
-	gcc -o $@ $^ $(CFLAGS)
+driver_test: driver_test.c graphic_library.c
+	gcc -o driver_test driver_test.c graphic_library.c -I.
