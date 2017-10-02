@@ -1,3 +1,10 @@
+/*
+ * Double- Buffered Graphics Library
+ * Author: Eric Dong
+ * Creation Date:  9/29/2017
+ * Last Modification Date: 10/1/2017
+ */
+
 #include "graphics.h"
 #include <time.h>
 #include <sys/time.h>
@@ -20,6 +27,7 @@ int fb_fd;
 const char* CLEAR = "\033[2J";
 
 void init_graphics() {
+  // Open the framebuffer file
   const char* path = "/dev/fb0"; 
   int fb_fd = open(path, O_RDWR); 
   ioctl(fb_fd, FBIOGET_VSCREENINFO, &variable);
@@ -29,26 +37,30 @@ void init_graphics() {
   ioctl(fb_fd, FBIOGET_VSCREENINFO, &variable);
   ioctl(fb_fd, FBIOGET_FSCREENINFO, &fixed);
   length = variable.yres_virtual * fixed.line_length;
+  // Map the  file to address space
   memory_map_address = (unsigned short*) mmap(0, length,
   PROT_READ|PROT_WRITE, MAP_SHARED, fb_fd, 0);
-
-  clear_screen((void*) memory_map_address);
+  write(1,CLEAR,8);
+  //clear_screen((void*) memory_map_address);
+  // Disable Echo and  set  input to non-canonical mode
   ioctl(1, TCGETS, &terminal_settings);
   terminal_settings.c_lflag &= ~(ICANON|ECHO);
-
   ioctl(1, TCSETS, &terminal_settings);
 }
 
 void exit_graphics() {
+  // unmap the file
   int retval = munmap((void *)memory_map_address, length);
   retval = ioctl(1, TCGETS, &terminal_settings);
+  // set input back to canonical mode and turn echo back on
   terminal_settings.c_lflag |= (ICANON|ECHO);
   retval = ioctl(1, TCSETS, &terminal_settings);
+  // close the frame buffer file
   retval = close(fb_fd);
 }
 
 char getkey() {
- // First use select to check if there is a key press
+ // First use select system call to check if there is a key press
  // if there s a key press then read()
   fd_set rfds;
   struct timeval tv;
@@ -77,7 +89,7 @@ char getkey() {
 }
 
 void sleep_ms(long ms) {
-  struct timespec t, t2; 
+  struct timespec t, t2;
   long sec = ms/1000;
   long numNano = (ms % 1000) * 1000000;
 
@@ -89,30 +101,36 @@ void sleep_ms(long ms) {
 void clear_screen(void *img) {
    unsigned short* temp = (unsigned short*) img;
    int i ;
+   // set all the bytes to zero
    for (i = 0; i <  length/2; i++) {
      *temp =  0;
      temp++;
    }
 }
-
+// draws a pixel given the x and y coordinate
+// Note* image is stored in row-major order
 void draw_pixel(void *img, int x, int y, color_t color) {
   unsigned short *fb = (unsigned short *) img;
+  // find the y coordinate location in the mmapped file
+  // y should be between (0 - 479)
   unsigned long y_pixel = y * 640;
+  // the x coordinate should be between (0 - 639)
   unsigned long x_pixel = x;
-  unsigned short index = y_pixel + x_pixel;
+  // compute the offset to point to correct pixel in memory
   unsigned short *ptr = (fb + y_pixel + x_pixel);
   *ptr = color;
 }
 
-// Oonline source:
+// online source for Bresenham's Algorithm of Line Generation
 //www.slideshare.net/saikrishnatanguturu/computer-graphics-ver10
+//Assumptions: lines draw from left to right, top to bottom
 void draw_line(void *img, int x1, int y1, int x2,int y2, color_t c) {
   int delta_x;
   int delta_y;
-  int decision;
+  int decision; // decides what pixel draw that is closest to the line
   int curr_x = x1;
   int curr_y = y1;
-  // Get the deltas for x and y  
+  // Get the deltas for x and y
   delta_x = x2 - x1;
   delta_y = y1 - y2;
   // check deltas
@@ -129,7 +147,6 @@ void draw_line(void *img, int x1, int y1, int x2,int y2, color_t c) {
        curr_y ++;
      }
    } else if(delta_y > 0) { // handle positive slope
-     // Testing for gradiant
      float gradient = delta_y / delta_x;
      if(gradient <= 1) {
        decision = (2 * delta_y) - delta_x;
@@ -165,13 +182,12 @@ void draw_line(void *img, int x1, int y1, int x2,int y2, color_t c) {
      }
    } else if (delta_y < 0) { // handle negative slope 
      delta_y = y2 - y1;
-      // Testing for gradiant
      float gradient = delta_y / delta_x;
      if(gradient <= 1) {
        decision = (2 * delta_y) - delta_x;
        while(curr_x <= x2 && curr_y <= y2) {
         // draw the pixel
-          draw_pixel(img, curr_x, curr_y, c);   
+          draw_pixel(img, curr_x, curr_y, c);
           if(decision < 0) {
           // no changes to curr_y 
           // Calculate next decision
@@ -201,11 +217,14 @@ void draw_line(void *img, int x1, int y1, int x2,int y2, color_t c) {
      }
    }
 }
+// creates and returns a new buffer
 void* new_offscreen_buffer() {
    void* offscreen_buffer_address = mmap(NULL, length, PROT_READ | 
    PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
    return offscreen_buffer_address; 
 }
+// copies the buffer given by the parameter to the framebuffer mapped to 
+// memory
 void blit(void *src) {
    unsigned short* temp = (unsigned short*) src;
    unsigned short* fb = memory_map_address;
